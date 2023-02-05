@@ -15,7 +15,7 @@ A python script that consumes messages from a localstack SQS queue, performs dat
  1. Checkout the project and **cd to the project directory** in a bash shell (MacOS/Linux: terminal; Windows: git bash)
  
  2. Start the postgres and localstack containers:  
- `docker-compose up`
+ `docker-compose up`  
 If the command fails, you may have to change the version in `docker-compose.yml` according to the error message.
  
  3. Run the activate.sh script to setup the virtual env for python and install the dependencies.
@@ -47,7 +47,10 @@ If the command fails, you may have to change the version in `docker-compose.yml`
  #password: postgres
  select * from user_logins;
  select count(*) from user_logins;
- ```
+ ```  
+ In the logfile `fetch-etl-server.log`, the message `Waiting for new message..` will be seen, which means there are no new messages left to be processed in the SQS queue.
+ 
+ 7. Run `docker-compose down` to shutdown the docker containers.
  
  # Next Steps
  
@@ -96,3 +99,43 @@ RUN ./start.sh
 ```
 
 
+# Questions
+1. *How would you deploy this application in production?*  
+  
+After making the changes mentioned in Next Steps, the app may be deployed into production. One of the ways to do so is to create (`docker build`) and publish the Docker image to a registry. A docker-compose file may then be deployed to the production environment which contains the image, ports, host details for the script, along with any other services which are to be deployed in the production server. `docker-compose up` may then be used to bring up the docker container(s).  
+
+Another way is to use Kubernetes for deploying the docker image. The containers deployed can then be monitored and scaled up/down as needed, based on the volume of messages in the SQS queue. 
+ 
+The process of deployment itself can be automated by using a CI/CD pipeline such as Jenkins.  
+___
+2. *What other components would you want to add to make this production ready?*  
+  
+  To make this ETL script production ready, the changes mentioned in the "Next Steps" section need to be implemented. Furthermore, the following components can be added:
+  1. The polling frequency for new messages on SQS queue may be made more intelligent. This can be achieved with a combination of the following:    
+      - Long Polling: By enabling long polling, the number of empty responses are reduced when there are no messages available to return in reply to a ReceiveMessage request sent to an Amazon SQS queue and eliminating false empty responses.  
+      - Batch Processing: Poll for multiple messages at a time, instead of polling for one message at a time. This can be useful to save resources when the information is not immediately required by the downstream. The python script itself may be run as a batch process once every hour/day. This change depends on the feature requirement and the volume of messages in the incoming queue.  
+  2. Creating a dead-letter queue  
+       - In the current implementation, the messages that do not have a valid format are discared and lost. Some invalid messages may be relevant but may have improper format due to human error or a bug in the upsteam services. Depending on the importance of the messages, a dead-letter SQS queue can be created. The invalid messages will then be published to the dead-letter queue by the ETL script and can be consumed by the upstream again for re-processing or can be looked at manually for identifying the root cause of the invalid message.  
+___
+3. *How can this application scale with a growing dataset?*
+
+SQS is a messaging queue where each message is received exactly once by its consumers. Hence, if multiple instances of the python script are deployed and are consuming from the same queue, they will essentially increase the message consumption throughput linearly. Source: [AWS Docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-throughput-horizontal-scaling-and-batching.html)
+Hence, to scale the application with a growing dataset, the number of consumers and producers on the SQS queue can be increased, by using container orchestration tools such as Kubernetes as mentioned in Question 1.   
+However, the database writes can become a bottleneck soon. This can be mitigated by writing to databases in batches instead of writing once for every message.
+
+___
+4. *How can PII be recovered later on?*
+
+If masking is made in such a way that the downstream can be programatically recover the original data, then it is a bad masking mechanism. The masking technique used in the script is hashlib encryption, which is a one-way hash. In case it is absolutely necessary to recover the PII from the masked PII, one way is to store the mapping between the original value and the generated hashvalue in a database table. This table would have limited SELECT (view) permissions to specific profiles on a need-to-have basis.  
+For ease of access, a REST API server can be setup with SSL certificate protected APIs to get the PII from the mapping table for the input masked PII.
+
+___
+5. *What are the assumptions made?*
+
+- I have assumed that the following fields from the message are required/mandatory (cannot be null or absent from the message):
+```
+required_keys = ["user_id", "app_version", "device_type", "ip", "locale", "device_id"] 
+```
+- Only the field `locale` can hold null values.
+- The appversion components range from 0-99.
+- The invalid messages can be deleted from the queue and ignored by the application (after logging).
