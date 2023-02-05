@@ -31,7 +31,7 @@ If the command fails, you might have to change the version in `docker-compose.ym
     To stop the python script:
     `./stop.sh`  
    
- 5. Alternatively, you can run the script directly:
+ 5. As an alternate to steps 3 and 4, you can run the script directly:
    ```
    python3 -m venv venv
    source venv/bin/activate
