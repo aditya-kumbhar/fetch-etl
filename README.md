@@ -48,3 +48,51 @@ If the command fails, you may have to change the version in `docker-compose.yml`
  select * from user_logins;
  select count(*) from user_logins;
  ```
+ 
+ # Next Steps
+ 
+ 1. Currently, the aws_access_key_id, aws_secret_access_key, region_name are hardcoded in the python script:
+ ```
+ sqs_client = boto3.client("sqs", endpoint_url="http://localhost:4566", region_name= 'us-east-1', aws_access_key_id='test', aws_secret_access_key='test')
+ ```
+When connecting to an actual AWS SQS queue, the hardcoded values should not be left in the code. Instead, the `profile_name` argument can be used when creating the boto3 client. The profile is the one that is set in the AWS CLI configuration file: `~/.aws/config`
+`sqs_client = boto3.client("sqs", profile_name='my_profile')`  
+Alternatively, environment variables `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_DEFAULT_REGION` may be set in the environment where the script is being deployed to. These values will be used by default if not specified while creating the boto3 client:
+```
+sqs_client = boto3.client("sqs")
+```
+
+The queue_url can also be fetched from an environment variable as it may differ for every environent (DEV/UAT/PROD).
+
+2. Similarly, the PostgreSQL hostname, username, password, should be stored in environment variables and then referenced in the code.
+```
+import configparser
+
+config = configparser.ConfigParser()
+config.read('db-config.ini')
+
+PG_USERNAME = config['postgres']['username']
+PG_HOST = config['postgres']['host']
+PG_PASSWORD = config['postgres']['password']
+
+# Use these configuration variables to connect to the database
+conn = psycopg2.connect(
+    host=PG_HOST,
+    user=PG_USERNAME,
+    password=PG_PASSWORD,
+    database="mydatabase"
+)
+
+```
+
+3. To be able to scale or deploy into container orchestration tools, a Dockerfile may be included to build an image for the script:
+```
+FROM python:3.7
+
+WORKDIR /app
+COPY . .
+RUN ./activate.sh
+RUN ./start.sh
+```
+
+
