@@ -26,7 +26,7 @@ else
 		echo "Started $app_name"
 		deactivate
 		if ! is_running; then
-			echo "Unable to start, see $app_log and $err_log"
+			echo "Unable to start, see nohup.out, $app_name.log"
 			exit 1
 		fi
 	else
