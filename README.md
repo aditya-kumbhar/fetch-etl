@@ -16,7 +16,7 @@ A python script that consumes messages from a localstack SQS queue, performs dat
  
  2. Start the postgres and localstack containers:  
  `docker-compose up`  
-If the command fails, you may have to change the version in `docker-compose.yml` according to the error message.
+If the command fails, you might have to change the version in `docker-compose.yml` according to the error message.
  
  3. Run the activate.sh script to setup the virtual env for python and install the dependencies.
 
