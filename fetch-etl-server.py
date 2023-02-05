@@ -46,9 +46,11 @@ def mask_pii_data(data):
 
     return data
 
-# Convert appversion to int for storing in the table
+# Convert appversion to int for storing in the table: 5.3.0 becomes 50300 (every version component ranges from 0-99)
 def get_int_appversion(appversion):
-    return int(appversion.split('.')[0])
+    l = [int(x, 10) for x in appversion.split('.')]
+    l.reverse()
+    return sum(x * (100 ** i) for i, x in enumerate(l))
 
 # Write the data to the PostgreSQL database
 def write_to_postgres(data, receipt_handle):
