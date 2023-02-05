@@ -34,7 +34,9 @@ A python script that consumes messages from a localstack SQS queue, performs dat
    
  6. Alternatively, you can run the script directly:
    ```
+   python3 -m venv venv
    source venv/bin/activate
+   pip install -r requirements.txt
    python3 fetch-etl-server.py
    ```
    The logs can be viewed in `fetch-etl-server.log`
